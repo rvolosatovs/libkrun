@@ -2496,7 +2496,7 @@ impl FileSystem for PassthroughFs {
                 std::fs::remove_dir_all(&self.cfg.root_dir)?;
                 Ok(Vec::new())
             }
-            _ => Err(io::Error::from_raw_os_error(libc::EOPNOTSUPP)),
+            _ => Err(linux_error(io::Error::from_raw_os_error(libc::EOPNOTSUPP))),
         }
     }
 }
