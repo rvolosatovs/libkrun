@@ -113,7 +113,19 @@ impl Console {
     }
 
     pub fn get_sigwinch_fd(&self) -> RawFd {
-        self.sigwinch_evt.as_raw_fd()
+        // The signal handler writes to this fd to wake the event loop. On
+        // Linux, EventFd is a real eventfd(2) where as_raw_fd() is the same
+        // fd you read and write. On macOS, EventFd is a pipe shim and
+        // as_raw_fd() returns only the read end — writing to it would fail
+        // silently with EBADF, so we hand back the write end instead.
+        #[cfg(target_os = "linux")]
+        {
+            self.sigwinch_evt.as_raw_fd()
+        }
+        #[cfg(target_os = "macos")]
+        {
+            self.sigwinch_evt.get_write_fd()
+        }
     }
 
     pub fn update_console_size(&mut self, port_id: u32, cols: u16, rows: u16) {
