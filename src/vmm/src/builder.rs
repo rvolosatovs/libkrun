@@ -54,7 +54,6 @@ use kbs_types::Tee;
 use crate::device_manager;
 #[cfg(target_os = "linux")]
 use crate::signal_handler::register_sigint_handler;
-#[cfg(target_os = "linux")]
 use crate::signal_handler::register_sigwinch_handler;
 use crate::terminal::{term_restore_mode, term_set_raw_mode};
 #[cfg(feature = "blk")]
@@ -197,8 +196,7 @@ pub enum StartMicrovmError {
     // Cannot initialize a MMIO Fs Device or add ad device to the MMIO Bus.
     RegisterConsoleDevice(device_manager::mmio::Error),
     /// Cannot register SIGWINCH event file descriptor.
-    #[cfg(target_os = "linux")]
-    RegisterFsSigwinch(kvm_ioctls::Error),
+    RegisterFsSigwinch(utils::errno::Error),
     /// Cannot initialize a MMIO Gpu device or add a device to the MMIO Bus.
     RegisterGpuDevice(device_manager::mmio::Error),
     /// Cannot initialize a MMIO Input device or add a device to the MMIO Bus.
@@ -410,7 +408,6 @@ impl Display for StartMicrovmError {
                     "Cannot initialize a MMIO Console Device or add a device to the MMIO Bus. {err_msg}"
                 )
             }
-            #[cfg(target_os = "linux")]
             RegisterFsSigwinch(ref err) => {
                 let mut err_msg = format!("{err}");
                 err_msg = err_msg.replace('\"', "");
@@ -2161,7 +2158,6 @@ fn attach_console_devices(
         .add_subscriber(console.clone())
         .map_err(RegisterEvent)?;
 
-    #[cfg(target_os = "linux")]
     register_sigwinch_handler(console.lock().unwrap().get_sigwinch_fd())
         .map_err(RegisterFsSigwinch)?;
 

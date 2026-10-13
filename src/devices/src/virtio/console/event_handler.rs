@@ -154,6 +154,8 @@ impl Subscriber for Console {
             if raise_irq {
                 self.device_state.signal_used_queue();
             }
+        } else if source == sigwinch_evt {
+            let _ = self.sigwinch_evt.read();
         } else {
             warn!("console: The device is not yet activated. Spurious event received: {source:?}");
         }

@@ -130,7 +130,7 @@ impl PortInput for PortInputFd {
             let borrowed_fd = unsafe { BorrowedFd::borrow_raw(stopfd.as_raw_fd()) };
             poll_fds.push(PollFd::new(borrowed_fd, PollFlags::POLLIN));
         }
-        poll(&mut poll_fds, PollTimeout::NONE).expect("Failed to poll");
+        poll_retrying(&mut poll_fds);
     }
 }
 
@@ -155,7 +155,19 @@ impl PortOutput for PortOutputFd {
 
     fn wait_until_writable(&self) {
         let mut poll_fds = [PollFd::new(self.0.as_fd(), PollFlags::POLLOUT)];
-        poll(&mut poll_fds, PollTimeout::NONE).expect("Failed to poll");
+        poll_retrying(&mut poll_fds);
+    }
+}
+
+fn poll_retrying(poll_fds: &mut [PollFd]) {
+    loop {
+        match poll(poll_fds, PollTimeout::NONE) {
+            Err(Errno::EINTR) => continue,
+            res => {
+                res.expect("Failed to poll");
+                return;
+            }
+        }
     }
 }
 
@@ -266,7 +278,7 @@ impl PortInput for PortInputSigInt {
             poll_fds.push(PollFd::new(stop_bfd, PollFlags::POLLIN));
         }
 
-        poll(&mut poll_fds, PollTimeout::NONE).expect("Failed to poll");
+        poll_retrying(&mut poll_fds);
     }
 }
 
@@ -294,7 +306,7 @@ impl PortInput for PortInputEmpty {
             // SAFETY: we trust stopfd won't go away to avoid a dup call here.
             let borrowed_fd = unsafe { BorrowedFd::borrow_raw(stopfd.as_raw_fd()) };
             let mut poll_fds = [PollFd::new(borrowed_fd, PollFlags::POLLIN)];
-            poll(&mut poll_fds, PollTimeout::NONE).expect("Failed to poll");
+            poll_retrying(&mut poll_fds);
         } else {
             std::thread::sleep(std::time::Duration::MAX);
         }
